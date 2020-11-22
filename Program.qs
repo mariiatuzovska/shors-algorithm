@@ -10,9 +10,36 @@
     open Microsoft.Quantum.Characterization;
     open Microsoft.Quantum.Diagnostics;
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Introduction ///////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////////
+    @EntryPoint()
+    operation FindPeriodMain(a : Int, n : Int) 
+    : (Int, Int) {
+
+        let useRobustPhaseEstimation = false;
+
+        if (n % 2 == 0) {
+            Message("An even number has been given; 2 is a factor.");
+            return (n / 2, 2);
+        }
+
+        mutable foundFactors = false;
+        mutable factors = (1, 1);
+
+        Message($"Estimating period of {a} for mod {n}");
+
+        let period = EstimatePeriod(a, n, useRobustPhaseEstimation);
+        Message($"Period of {a} for modulus {n} is {period}");
+
+        // Set the flag and factors values if the continued fractions
+        // classical algorithm succeeds.
+        set (foundFactors, factors) = MaybeFactorsFromPeriod(n, a, period);
+
+        if (foundFactors == true) {
+            Message("Estimating period has been found gracefully");
+        }
+        
+        // Return the factorization
+        return factors;
+    }
 
     // This sample contains Q# code implementing Shor's quantum algorithm for
     // factoring integers. The underlying modular arithmetic is implemented
@@ -32,7 +59,6 @@
     ///
     /// # Output
     /// Pair of numbers p > 1 and q > 1 such that p⋅q = `number`
-    @EntryPoint()
     operation FactorSemiprimeInteger(number : Int, useRobustPhaseEstimation : Bool) 
     : (Int, Int) {
         // First check the most trivial case, if the provided number is even
@@ -64,6 +90,8 @@
                 // `generator` mod `number`.
                 // Here we have a choice which Phase Estimation algorithm to use.
                 let period = EstimatePeriod(generator, number, useRobustPhaseEstimation);
+
+                Message($"Period of {generator} for modulus {number} is {period}");
 
                 // Set the flag and factors values if the continued fractions
                 // classical algorithm succeeds.
@@ -180,8 +208,11 @@
                 generator, modulus, useRobustPhaseEstimation, bitsize 
             );
 
+            Message($"{frequencyEstimate}");
+
             if (frequencyEstimate != 0) {
                 set result = PeriodFromFrequency(modulus,frequencyEstimate, bitsPrecision, result);
+                Message($"found new result {result}");
             }
             else {
                 Message("The estimated frequency was 0, trying again.");
@@ -311,6 +342,8 @@
         currentDivisor : Int
     )
     : Int {
+
+        Message("PeriodFromFrequency has been called");
         
         // Now we use Microsoft.Quantum.Math.ContinuedFractionConvergentI
         // function to recover s/r from dyadic fraction k/2^bitsPrecision.
